@@ -19,32 +19,30 @@ readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
-    name='OneBot',
+    name='dns',
     version='0.1.0',
-    description='Python reincarnation of OneBot',
+    description='Python DNS server / client',
     long_description=readme + '\n\n' + history,
-    author='Thom Wiggers',
-    author_email='Thom@ThomWiggers.nl',
-    url='https://github.com/thomwiggers/OneBot',
+    author='Thom Wiggers and Luuk Scholten',
+    author_email='Thom@ThomWiggers.nl and info@luukscholten.com',
+    url='https://github.com/thomwiggers/dns-python',
     packages=[
-        'OneBot',
+        'dns',
     ],
-    package_dir={'OneBot':
-                 'OneBot'},
+    package_dir={'dns':
+                 'dns'},
     include_package_data=True,
     install_requires=[
-        'irc3'
     ],
     license="BSD",
     zip_safe=False,
-    keywords='OneBot',
+    keywords='dns',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: GNU General Public Licence v3 or later (GPLv3+)',
         'Natural Language :: English',
         "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
