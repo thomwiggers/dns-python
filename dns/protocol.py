@@ -1,4 +1,5 @@
 from __future__ import print_function, unicode_literals
+import struct
 
 QUERY_CLASS_IN = 1
 
@@ -15,11 +16,18 @@ QUERY_TYPE_TXT = 16
 class DNSPacket(object):
     """A DNS Packet"""
 
-    def __init__(self):
+    def __init__(self, id):
         self.questions = []
         self.answers = []
         self.authorities = []
         self.additional = []
+        self.identifier = id
+
+    def pack_struct(self):
+        return struct.pack("HH", self.identifier, self._craft_flags()) 
+
+    def _craft_flags(self):
+            return 0x0100 
 
 
 class Question(object):
