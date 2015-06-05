@@ -16,19 +16,35 @@ QUERY_TYPE_TXT = 16
 class DNSPacket(object):
     """A DNS Packet"""
 
-    def __init__(self, id):
+    def __init__(self):
         self.questions = []
         self.answers = []
         self.authorities = []
         self.additional = []
-        self.identifier = id
+        self.identifier = -1
 
     def pack_struct(self):
-        return struct.pack("HH", self.identifier, self._craft_flags()) 
+        return self._craft_header() 
+    
+    def _craft_header(self):
+        return struct.pack("HHHHHH", 
+                self.identifier,
+                self._craft_flags(),
+                len(self.questions),
+                len(self.answers),
+                len(self.authorities),
+                len(self.additional)
+        )
 
     def _craft_flags(self):
-            return 0x0100 
+        return
 
+
+class RecursiveDNSQuery(DNSPacket):
+    """A packet for a recursive DNS query"""
+    
+    def _craft_flags(self):
+        return 0x0100
 
 class Question(object):
 

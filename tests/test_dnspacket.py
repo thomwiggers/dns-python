@@ -1,11 +1,12 @@
 import unittest
-from dns.protocol import DNSPacket 
+from dns.protocol import RecursiveDNSQuery 
 import struct
 
 #assumption: all dns packets are queries
 class TestDnsPacketQueryHeader(unittest.TestCase):
     def _get_header(self):
-        dnspacket = DNSPacket(3)
+        dnspacket = RecursiveDNSQuery()
+        dnspacket.identifier = 3
         header = struct.unpack_from("HH", dnspacket.pack_struct())
         return header
 
