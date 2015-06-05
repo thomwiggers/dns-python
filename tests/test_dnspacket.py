@@ -1,18 +1,20 @@
 import unittest
 from dns.protocol import RecursiveDNSQuery 
+from dns.protocol import Question
 import struct
 
 #assumption: all dns packets are queries
-class TestDnsPacketQueryHeader(unittest.TestCase):
+class TestRecursiveDNSQueryHeader(unittest.TestCase):
     def _get_header(self):
         dnspacket = RecursiveDNSQuery()
         dnspacket.identifier = 3
-        header = struct.unpack_from("HH", dnspacket.pack_struct())
+        dnspacket.questions.append(Question())
+        dnspacket.questions.append(Question())
+        header = struct.unpack_from("HHHHHH", dnspacket.pack_struct())
         return header
 
     def test_has_id(self):
         header = self._get_header()
-        
         assert header[0] == 3
 
     def test_packet_is_query(self):
@@ -84,3 +86,10 @@ class TestDnsPacketQueryHeader(unittest.TestCase):
         flags = header[1]
         rcode = flags & 0x000f
         assert rcode == 0x0000
+
+    def test_num_count_sections(self):
+        header = self._get_header()
+        assert header[2] == 2
+        assert header[3] == 0
+        assert header[4] == 0
+        assert header[5] == 0
