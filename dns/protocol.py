@@ -17,17 +17,21 @@ class DNSPacket(object):
     """A DNS Packet"""
 
     def __init__(self):
+        self.is_query = False
         self.questions = []
         self.answers = []
         self.authorities = []
         self.additional = []
         self.identifier = -1
 
+    def from_struct(self, struct_):
+        raise NotImplementedError('TODO')
+
     def pack_struct(self):
         return self._craft_header()
 
     def _craft_header(self):
-        return struct.pack("HHHHHH",
+        return struct.pack("!HHHHHH",
                            self.identifier,
                            self._craft_flags(),
                            len(self.questions),
@@ -36,22 +40,40 @@ class DNSPacket(object):
                            len(self.additional))
 
     def _craft_flags(self):
-        return
+        flags = 0
+        if self.is_query:
+            flags |= 0b10000000
+        flags <<= 8  # upper 8 bits
+        return flags
 
 
-class RecursiveDNSQuery(DNSPacket):
+class RecursiveDNSMessage(DNSPacket):
     """A packet for a recursive DNS query"""
 
     def _craft_flags(self):
-        return 0x0100
+        flags = super(RecursiveDNSMessage, self)._craft_flags()
+        # set recursive flag
+        flags |= 1 << 8  # set on pos 7, so 15-7 = 8
+        return flags
 
 
 class Question(object):
 
-    def __init__(self):
-        self.qname = None  # domain name
-        self.qtype = None  # query type
-        self.qclass = QUERY_CLASS_IN
+    def __init__(self, qname=None, qtype=None, qclass=QUERY_CLASS_IN):
+        self.qname = qname  # domain name
+        self.qtype = qtype  # query type
+        self.qclass = qclass
+
+    def pack_struct(self):
+        return self._pack_names() + struct.pack('!HH', self.qtype, self.qclass)
+
+    def _pack_names(self):
+        qname = bytearray()
+        for part in self.qname.split('.'):
+            qname.append(len(part))
+            qname += bytearray(part, 'ascii')
+        qname.append(0)
+        return qname
 
 
 class ResourceRecord(object):
@@ -62,6 +84,11 @@ class ResourceRecord(object):
         self.class_ = QUERY_CLASS_IN  # query class
         self.ttl = None  # time to live in seconds
         self.rdata = None  # resource data
+
+    @classmethod
+    def from_struct(self, struct_):
+        """Construct a ResourceRecord subclass from a struct"""
+        raise NotImplementedError('TODO')
 
     def _uncompress(self):
         pass
