@@ -24,17 +24,16 @@ class DNSPacket(object):
         self.identifier = -1
 
     def pack_struct(self):
-        return self._craft_header() 
-    
+        return self._craft_header()
+
     def _craft_header(self):
-        return struct.pack("HHHHHH", 
-                self.identifier,
-                self._craft_flags(),
-                len(self.questions),
-                len(self.answers),
-                len(self.authorities),
-                len(self.additional)
-        )
+        return struct.pack("HHHHHH",
+                           self.identifier,
+                           self._craft_flags(),
+                           len(self.questions),
+                           len(self.answers),
+                           len(self.authorities),
+                           len(self.additional))
 
     def _craft_flags(self):
         return
@@ -42,9 +41,10 @@ class DNSPacket(object):
 
 class RecursiveDNSQuery(DNSPacket):
     """A packet for a recursive DNS query"""
-    
+
     def _craft_flags(self):
         return 0x0100
+
 
 class Question(object):
 
@@ -80,7 +80,7 @@ class ARecord(ResourceRecord):
 
 class CNAMERecord(ResourceRecord):
     def __init__(self):
-        super(ARecord, self).__init__()
+        super(CNAMERecord, self).__init__()
 
     def get_cname(self):
         raise NotImplementedError("Not yet implemented")
