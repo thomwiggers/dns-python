@@ -13,6 +13,20 @@ QUERY_TYPE_SRV = 33
 QUERY_TYPE_TXT = 16
 
 
+def _pack_name(name):
+    """Pack names along DNS specs
+
+    >>> _pack_name('foo.com')
+    bytearray(b'\x03foo\x03com\x00')
+    """
+    b = bytearray()
+    for part in name.strip('.').split('.'):
+        b.append(len(part))
+        b += bytearray(part, 'ascii')
+    b.append(0)
+    return b
+
+
 class DNSPacket(object):
     """A DNS Packet"""
 
@@ -65,15 +79,9 @@ class Question(object):
         self.qclass = qclass
 
     def pack_struct(self):
-        return self._pack_names() + struct.pack('!HH', self.qtype, self.qclass)
-
-    def _pack_names(self):
-        qname = bytearray()
-        for part in self.qname.split('.'):
-            qname.append(len(part))
-            qname += bytearray(part, 'ascii')
-        qname.append(0)
-        return qname
+        return _pack_name(self.qname) + struct.pack('!HH',
+                                                    self.qtype,
+                                                    self.qclass)
 
 
 class ResourceRecord(object):
@@ -94,15 +102,33 @@ class ResourceRecord(object):
         pass
         # see 4.1.4
 
+    def pack_struct(self):
+        return (_pack_name(self.name) +
+                struct.pack('!HHlH',
+                            self.type,
+                            self.class_,
+                            self.ttl,
+                            len(self.rdata))
+                + self.pack_rdata())
+
 
 class ARecord(ResourceRecord):
 
-    def __init__(self):
+    def __init__(self, address=None):
         super(ARecord, self).__init__()
+        self.address = address  # as string, eg. 127.0.0.1
 
     def get_address(self):
         """ See section 3.4.1 TODO"""
-        raise NotImplementedError("Not yet implemented")
+        if not self.address:
+            self.address = '.'.join(
+                map(str, struct.unpack_from('!bbbb', self.rdata)))
+        return self.address
+
+    def pack_rdata(self):
+        if self.rdata:
+            return self.rdata
+        return struct.pack('bbbb', *list(map(int, self.address.split('.'))))
 
 
 class CNAMERecord(ResourceRecord):
