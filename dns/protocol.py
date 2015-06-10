@@ -120,17 +120,29 @@ class Question(object):
 
 class ResourceRecord(object):
 
-    def __init__(self):
-        self.name = None  # domain name
-        self.type = None  # query type
+    def __init__(self, name=None, ttl=None, rdata=None):
+        self.name = name  # domain name
         self.class_ = QUERY_CLASS_IN  # query class
-        self.ttl = None  # time to live in seconds
-        self.rdata = None  # resource data
+        self.ttl = ttl  # time to live in seconds
+        self.rdata = rdata  # resource data
 
     @classmethod
-    def from_struct(self, struct_):
-        """Construct a ResourceRecord subclass from a struct"""
-        raise NotImplementedError('TODO')
+    def from_struct(cls, name, struct_):
+        """Construct a ResourceRecord subclass from a struct. The name
+        needs to have already been unpacked.
+        """
+        name = name
+        (type_, class_, ttl, rdlength) = struct.unpack_from('!HHLH', struct_)
+        rdata = struct_[10:10+rdlength]
+
+        assert class_ == QUERY_CLASS_IN, "Only the internet class is supported"
+
+        if type_ == QUERY_TYPE_A:
+            return ARecord(name=name, ttl=ttl, rdata=rdata)
+        elif type_ == QUERY_TYPE_CNAME:
+            return CNAMERecord(name=name, ttl=ttl, rdata=rdata)
+
+        raise NotImplementedError("Got a resource type we don't understand")
 
     def _uncompress(self):
         pass
@@ -148,9 +160,11 @@ class ResourceRecord(object):
 
 class ARecord(ResourceRecord):
 
-    def __init__(self, address=None):
-        super(ARecord, self).__init__()
-        self.address = address  # as string, eg. 127.0.0.1
+    type_ = QUERY_TYPE_A
+
+    def __init__(self, address=None, *args, **kwargs):
+        super(ARecord, self).__init__(*args, **kwargs)
+        self.address = address  # as sbtring, eg. 127.0.0.1
 
     def get_address(self):
         """ See section 3.4.1 TODO"""
@@ -166,8 +180,11 @@ class ARecord(ResourceRecord):
 
 
 class CNAMERecord(ResourceRecord):
-    def __init__(self):
-        super(CNAMERecord, self).__init__()
+
+    type_ = QUERY_TYPE_CNAME
+
+    def __init__(self, *args, **kwargs):
+        super(CNAMERecord, self).__init__(*args, **kwargs)
 
     def get_cname(self):
         raise NotImplementedError("Not yet implemented")
