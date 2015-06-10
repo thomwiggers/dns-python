@@ -1,4 +1,6 @@
 from __future__ import print_function, unicode_literals
+
+from socket import inet_ntoa, inet_aton
 import struct
 
 QUERY_CLASS_IN = 1
@@ -164,19 +166,23 @@ class ARecord(ResourceRecord):
 
     def __init__(self, address=None, *args, **kwargs):
         super(ARecord, self).__init__(*args, **kwargs)
-        self.address = address  # as sbtring, eg. 127.0.0.1
+        self._address = address  # as sbtring, eg. 127.0.0.1
 
-    def get_address(self):
+    @property
+    def address(self):
         """ See section 3.4.1 TODO"""
-        if not self.address:
-            self.address = '.'.join(
-                map(str, struct.unpack_from('!bbbb', self.rdata)))
-        return self.address
+        if self._address is None and self.rdata is not None:
+            self._address = inet_ntoa(self.rdata)
+            return self._address
+        elif self._address is not None:
+            return self._address
+        else:
+            raise ValueError("No address and no rdata?!")
 
     def pack_rdata(self):
         if self.rdata:
             return self.rdata
-        return struct.pack('bbbb', *list(map(int, self.address.split('.'))))
+        return inet_aton(self._address)
 
 
 class CNAMERecord(ResourceRecord):
