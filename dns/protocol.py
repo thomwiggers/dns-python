@@ -26,6 +26,30 @@ def _pack_name(name):
     b.append(0)
     return b
 
+class DNSHeaderFlags(object):
+    """A wrapper for DNS Header flags"""
+
+    def __init__(self):
+        self.is_response = False
+        self.opcode = 0 #0-15
+        self.is_authorative_answer = False
+        self.is_truncated = False
+        self.recursion_desired = False
+        self.recursion_available = False
+        self.response_code = 0
+
+    def pack_struct(self):
+        flags = 0
+        flags |= (1 if self.is_response else 0) << 15
+        flags |= (self.opcode % 16) << 11
+        flags |= (1 if self.is_authorative_answer else 0) << 10
+        flags |= (1 if self.is_truncated else 0) << 9
+        flags |= (1 if self.recursion_desired else 0) << 8
+        flags |= (1 if self.recursion_available else 0) << 7
+        flags |= self.response_code % 15
+
+        return struct.pack("!H",flags)
+
 
 class DNSPacket(object):
     """A DNS Packet"""
@@ -37,6 +61,7 @@ class DNSPacket(object):
         self.authorities = []
         self.additional = []
         self.identifier = -1
+        self.flags = DNSHeaderFlags()
 
     def from_struct(self, struct_):
         raise NotImplementedError('TODO')
@@ -45,30 +70,23 @@ class DNSPacket(object):
         return self._craft_header()
 
     def _craft_header(self):
-        return struct.pack("!HHHHHH",
-                           self.identifier,
-                           self._craft_flags(),
-                           len(self.questions),
-                           len(self.answers),
-                           len(self.authorities),
-                           len(self.additional))
+        id = struct.pack("!H", self.identifier)
+        flags = self.flags.pack_struct()
+        header_rest = struct.pack("!HHHH",
+                len(self.questions),
+                len(self.answers),
+                len(self.authorities),
+                len(self.additional))
 
-    def _craft_flags(self):
-        flags = 0
-        if self.is_query:
-            flags |= 0b10000000
-        flags <<= 8  # upper 8 bits
-        return flags
+        return id + flags + header_rest
 
 
 class RecursiveDNSMessage(DNSPacket):
     """A packet for a recursive DNS query"""
 
-    def _craft_flags(self):
-        flags = super(RecursiveDNSMessage, self)._craft_flags()
-        # set recursive flag
-        flags |= 1 << 8  # set on pos 7, so 15-7 = 8
-        return flags
+    def __init__(self):
+        super(RecursiveDNSMessage, self).__init__()
+        self.flags.recursion_desired = True
 
 
 class Question(object):
