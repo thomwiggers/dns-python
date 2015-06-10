@@ -26,12 +26,13 @@ def _pack_name(name):
     b.append(0)
     return b
 
+
 class DNSHeaderFlags(object):
     """A wrapper for DNS Header flags"""
 
     def __init__(self):
         self.is_response = False
-        self.opcode = 0 #0-15
+        self.opcode = 0  # 0-15
         self.is_authorative_answer = False
         self.is_truncated = False
         self.recursion_desired = False
@@ -48,7 +49,7 @@ class DNSHeaderFlags(object):
         flags |= (1 if self.recursion_available else 0) << 7
         flags |= self.response_code % 15
 
-        return struct.pack("!H",flags)
+        return struct.pack("!H", flags)
 
     @classmethod
     def from_struct(cls, struct_):
@@ -86,11 +87,12 @@ class DNSPacket(object):
     def _craft_header(self):
         id = struct.pack("!H", self.identifier)
         flags = self.flags.pack_struct()
-        header_rest = struct.pack("!HHHH",
-                len(self.questions),
-                len(self.answers),
-                len(self.authorities),
-                len(self.additional))
+        header_rest = struct.pack(
+            "!HHHH",
+            len(self.questions),
+            len(self.answers),
+            len(self.authorities),
+            len(self.additional))
 
         return id + flags + header_rest
 
@@ -140,8 +142,8 @@ class ResourceRecord(object):
                             self.type,
                             self.class_,
                             self.ttl,
-                            len(self.rdata))
-                + self.pack_rdata())
+                            len(self.rdata)
+                            ) + self.pack_rdata())
 
 
 class ARecord(ResourceRecord):

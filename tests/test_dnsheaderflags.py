@@ -2,10 +2,11 @@ import unittest
 from dns.protocol import DNSHeaderFlags
 import struct
 
+
 class TestHeaderFlags(unittest.TestCase):
-    
+
     def test_pack_struct_empty_header(self):
-        flags = DNSHeaderFlags() 
+        flags = DNSHeaderFlags()
         bytestuff = struct.unpack_from("!H", flags.pack_struct())
         byteflags = bytestuff[0]
         assert byteflags == 0x0000
@@ -20,7 +21,7 @@ class TestHeaderFlags(unittest.TestCase):
 
         bytestuff = struct.unpack_from("!H", flags.pack_struct())
         byteflags = bytestuff[0]
-        
+
         assert byteflags == 0b1011110100001100
 
     def test_from_struct(self):
