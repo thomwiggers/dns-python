@@ -50,6 +50,18 @@ class DNSHeaderFlags(object):
 
         return struct.pack("!H",flags)
 
+    def from_struct(self, struct_):
+        obj = struct.unpack_from("!H",struct_)
+        flags = obj[0]
+        print (flags)
+        self.is_response = (flags & 0x8000) > 0
+        self.opcode = (flags & 0x7800) >> 11
+        self.is_authorative_answer = (flags & 0x0400) > 0
+        self.is_truncated = (flags & 0x0200) > 0
+        self.recursion_desired = (flags & 0x0100) > 0
+        self.recursion_available = (flags & 0x0080) > 0
+        self.response_code = (flags & 0x000f)
+
 
 class DNSPacket(object):
     """A DNS Packet"""
