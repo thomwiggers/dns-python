@@ -19,3 +19,12 @@ class TestQuestion(unittest.TestCase):
         qtype, qclass = struct.unpack_from('!HH', bytestuff, offset=13)
         assert qtype == QUERY_TYPE_A
         assert qclass == QUERY_CLASS_IN
+
+    def test_from_struct(self):
+        q = Question.from_struct('foobar.com', struct.pack('!HH',
+                                                           QUERY_TYPE_A,
+                                                           QUERY_CLASS_IN))[0]
+
+        assert q.qname == 'foobar.com'
+        assert q.qtype == QUERY_TYPE_A
+        assert q.qclass == QUERY_CLASS_IN

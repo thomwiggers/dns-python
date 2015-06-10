@@ -1,81 +1,39 @@
 import unittest
-from dns.protocol import RecursiveDNSMessage, Question
+from dns.protocol import (Question, QUERY_TYPE_A, DNSHeaderFlags,
+                          ARecord, DNSPacket)
 import struct
 
 
-# assumption: all dns packets are queries
-class TestRecursiveDNSMessageHeader(unittest.TestCase):
-    def _get_header(self):
-        dnspacket = RecursiveDNSMessage()
-        dnspacket.identifier = 3
-        dnspacket.questions.append(Question())
-        dnspacket.questions.append(Question())
-        header = struct.unpack_from("!HHHHHH", dnspacket.pack_struct())
-        return header
+class DNSPacketTest(unittest.TestCase):
 
-    def test_has_id(self):
-        header = self._get_header()
-        assert header[0] == 3
+    def test_from_struct(self):
+        flags = DNSHeaderFlags()
+        flags.is_response = True
+        flags.opcode = 1
+        flags.is_authorative_answer = 1
+        packet = struct.pack('!H', id(self) & 0xffff)
+        packet += flags.pack_struct()
+        packet += struct.pack('!HHHH', 1, 1, 1, 1)
 
-    def test_packet_is_query(self):
-        header = self._get_header()
+        q = Question(qname='test.com', qtype=QUERY_TYPE_A)
+        packet += q.pack_struct()
 
-        flags = header[1]
-        qr = flags & 0x8000
-        assert qr == 0
+        a = ARecord(name='foo.com', address='127.0.0.1', ttl=123)
+        packet += a.pack_struct()
+        packet += a.pack_struct()
+        packet += a.pack_struct()
 
-    def test_opcode_is_0(self):
-        header = self._get_header()
+        p = DNSPacket.from_struct(packet)
+        assert not p.is_query
+        assert len(p.questions) == 1
+        assert len(p.answers) == 1
+        assert len(p.authorities) == 1
+        assert len(p.additional) == 1
 
-        flags = header[1]
-        rcode = flags & (0b01111000 << 8)
-        assert rcode == 0
+        assert p.questions[0].qname == 'test.com.'
+        assert p.questions[0].qtype == QUERY_TYPE_A
 
-    def test_aa_is_0(self):
-        header = self._get_header()
-
-        flags = header[1]
-        aa = flags & 0x0400
-        assert aa == 0
-
-    def test_tc_is_0(self):
-        header = self._get_header()
-
-        flags = header[1]
-        tc = flags & 0x0200
-        assert tc == 0
-
-    def test_recursion_is_desired(self):
-        header = self._get_header()
-
-        flags = header[1]
-        rd = flags & (1 << 8)
-        assert rd > 0
-
-    def test_ra_is_0(self):
-        header = self._get_header()
-
-        flags = header[1]
-        ra = flags & 0b10000000
-        assert ra == 0
-
-    def test_z_is_0(self):
-        header = self._get_header()
-
-        flags = header[1]
-        z = flags & 0b01110000
-        assert z == 0
-
-    def test_rcode_is_0(self):
-        header = self._get_header()
-
-        flags = header[1]
-        rcode = flags & 0b00001111
-        assert rcode == 0
-
-    def test_num_count_sections(self):
-        header = self._get_header()
-        assert header[2] == 2
-        assert header[3] == 0
-        assert header[4] == 0
-        assert header[5] == 0
+        for item in (p.answers, p.authorities, p.additional):
+            item[0].name == 'foo.com.'
+            item[0].address == '127.0.0.1'
+            item[0].ttl == 123

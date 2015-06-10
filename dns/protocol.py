@@ -29,6 +29,29 @@ def _pack_name(name):
     return b
 
 
+def _extract_string(data, blob):
+    r"""Extract a string from the blob
+
+    >>> _extract_string(b'\x04test\x02nl\x00test', b'')
+    ('test.nl.', b'test')
+    >>> _extract_string(b'\x04test\xc0test',
+    ...                 b'\x09fietsband\x00')
+    ('test.fietsband.', b'test')
+
+    """
+    string = ''
+    while data and data[0] != 0:
+        if data[0] & 0xc0:
+            string += _extract_string(blob[data[0] ^ 0xc0:], blob)[0]
+            data = data[1:]
+            return (string, data)
+        else:
+            string += data[1:1+data[0]].decode('ascii') + '.'
+            data = data[1+data[0]:]
+
+    return (string, data[1:] if data else b'')
+
+
 class DNSHeaderFlags(object):
     """A wrapper for DNS Header flags"""
 
@@ -55,8 +78,7 @@ class DNSHeaderFlags(object):
 
     @classmethod
     def from_struct(cls, struct_):
-        obj = struct.unpack_from("!H", struct_)
-        flags = obj[0]
+        (flags, ) = struct.unpack_from("!H", struct_)
         this = cls()
         this.is_response = (flags & 0x8000) > 0
         this.opcode = (flags & 0x7800) >> 11
@@ -80,11 +102,48 @@ class DNSPacket(object):
         self.identifier = -1
         self.flags = DNSHeaderFlags()
 
-    def from_struct(self, struct_):
-        raise NotImplementedError('TODO')
+    @classmethod
+    def from_struct(cls, struct_):
+        """Create a DNSPacket object from a struct"""
+        packet = cls()
+        (packet.identifier, _, qdcount,
+         ancount, nscount, arcount) = struct.unpack_from('!HHHHHH', struct_)
+        packet.flags = DNSHeaderFlags.from_struct(struct_[2:4])
+
+        data = struct_[12:]
+        for i in range(qdcount):
+            (name, data) = _extract_string(data, struct_)
+            (q, data) = Question.from_struct(name, data)
+            packet.questions.append(q)
+
+        for i in range(ancount):
+            (name, data) = _extract_string(data, struct_)
+            (rr, data) = ResourceRecord.from_struct(name, data)
+            packet.answers.append(rr)
+
+        for i in range(nscount):
+            (name, data) = _extract_string(data, struct_)
+            (rr, data) = ResourceRecord.from_struct(name, data)
+            packet.authorities.append(rr)
+
+        for i in range(arcount):
+            (name, data) = _extract_string(data, struct_)
+            (rr, data) = ResourceRecord.from_struct(name, data)
+            packet.additional.append(rr)
+
+        return packet
 
     def pack_struct(self):
-        return self._craft_header()
+        """Pack this packet up"""
+        header = self._craft_header()
+        body = bytearray()
+        for item in (self.questions
+                     + self.answers
+                     + self.authorities
+                     + self.additional):
+            body += item.pack_struct()
+
+        return header + body
 
     def _craft_header(self):
         id = struct.pack("!H", self.identifier)
@@ -108,11 +167,21 @@ class RecursiveDNSMessage(DNSPacket):
 
 
 class Question(object):
+    """DNS Question object"""
+
+    size = 4
 
     def __init__(self, qname=None, qtype=None, qclass=QUERY_CLASS_IN):
+        """Construct a new question"""
         self.qname = qname  # domain name
         self.qtype = qtype  # query type
         self.qclass = qclass
+
+    @classmethod
+    def from_struct(cls, name, struct_):
+        """Transform a struct (without the name) into a question."""
+        (type_, class_) = struct.unpack_from('!HH', struct_)
+        return (cls(qname=name, qtype=type_, qclass=class_), struct_[4:])
 
     def pack_struct(self):
         return _pack_name(self.qname) + struct.pack('!HH',
@@ -121,6 +190,7 @@ class Question(object):
 
 
 class ResourceRecord(object):
+    """Resourcerecord parent class"""
 
     def __init__(self, name=None, ttl=None, rdata=None):
         self.name = name  # domain name
@@ -133,44 +203,45 @@ class ResourceRecord(object):
         """Construct a ResourceRecord subclass from a struct. The name
         needs to have already been unpacked.
         """
-        name = name
-        (type_, class_, ttl, rdlength) = struct.unpack_from('!HHLH', struct_)
+        (type_, class_, ttl, rdlength) = struct.unpack_from('!HHlH', struct_)
         rdata = struct_[10:10+rdlength]
 
         assert class_ == QUERY_CLASS_IN, "Only the internet class is supported"
 
         if type_ == QUERY_TYPE_A:
-            return ARecord(name=name, ttl=ttl, rdata=rdata)
+            record = ARecord(name=name, ttl=ttl, rdata=rdata)
         elif type_ == QUERY_TYPE_CNAME:
-            return CNAMERecord(name=name, ttl=ttl, rdata=rdata)
+            record = CNAMERecord(name=name, ttl=ttl, rdata=rdata)
+        else:
+            raise NotImplementedError(
+                "Got a resource type we don't understand")
 
-        raise NotImplementedError("Got a resource type we don't understand")
-
-    def _uncompress(self):
-        pass
-        # see 4.1.4
+        return (record, struct_[10+rdlength:])
 
     def pack_struct(self):
         return (_pack_name(self.name) +
                 struct.pack('!HHlH',
-                            self.type,
+                            self.type_,
                             self.class_,
                             self.ttl,
-                            len(self.rdata)
+                            len(self.pack_rdata())
                             ) + self.pack_rdata())
 
 
 class ARecord(ResourceRecord):
+    """DNS A Record"""
 
     type_ = QUERY_TYPE_A
+    size = 4
 
     def __init__(self, address=None, *args, **kwargs):
+        """Construct a new A record"""
         super(ARecord, self).__init__(*args, **kwargs)
-        self._address = address  # as sbtring, eg. 127.0.0.1
+        self._address = address  # as string, eg. 127.0.0.1
 
     @property
     def address(self):
-        """ See section 3.4.1 TODO"""
+        """Get an address"""
         if self._address is None and self.rdata is not None:
             self._address = inet_ntoa(self.rdata)
             return self._address
@@ -180,12 +251,14 @@ class ARecord(ResourceRecord):
             raise ValueError("No address and no rdata?!")
 
     def pack_rdata(self):
+        """Pack the object as rdata"""
         if self.rdata:
             return self.rdata
         return inet_aton(self._address)
 
 
 class CNAMERecord(ResourceRecord):
+    """DNS CNAME Record"""
 
     type_ = QUERY_TYPE_CNAME
 
@@ -193,4 +266,11 @@ class CNAMERecord(ResourceRecord):
         super(CNAMERecord, self).__init__(*args, **kwargs)
 
     def get_cname(self):
+        raise NotImplementedError("Not yet implemented")
+
+    @property
+    def size(self):
+        return len(self.get_rdata())
+
+    def pack_rdata(self):
         raise NotImplementedError("Not yet implemented")
