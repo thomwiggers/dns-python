@@ -17,7 +17,7 @@ def _pack_name(name):
     """Pack names along DNS specs
 
     >>> _pack_name('foo.com')
-    bytearray(b'\x03foo\x03com\x00')
+    bytearray(b'\\x03foo\\x03com\\x00')
     """
     b = bytearray()
     for part in name.strip('.').split('.'):
