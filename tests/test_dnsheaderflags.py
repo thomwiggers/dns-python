@@ -25,11 +25,10 @@ class TestHeaderFlags(unittest.TestCase):
         assert byteflags == 0b1011110100001100
 
     def test_from_struct(self):
-        flags = DNSHeaderFlags()
         byteflags = 0b1011110100001100
         obj = struct.pack("!H", byteflags)
 
-        flags.from_struct(obj)
+        flags = DNSHeaderFlags.from_struct(obj)
         assert flags.is_response
         assert flags.recursion_desired
         assert flags.opcode == 7
