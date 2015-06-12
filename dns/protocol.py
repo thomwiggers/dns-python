@@ -32,14 +32,17 @@ def _pack_name(name):
 def _extract_string(data, blob):
     r"""Extract a string from the blob
 
-    >>> _extract_string(b'\x04test\x02nl\x00test', b'')
-    ('test.nl.', b'test')
+    >>> _extract_string(b'\x04test\x02nl\x00test', b'') == \
+    ... ('test.nl.', bytearray(b'test'))
+    True
     >>> _extract_string(b'\x04test\xc0test',
-    ...                 b'\x09fietsband\x00')
-    ('test.fietsband.', b'test')
+    ...                 b'\x09fietsband\x00') == \
+    ... ('test.fietsband.', bytearray(b'test'))
+    True
 
     """
     string = ''
+    data = bytearray(data)
     while data and data[0] != 0:
         if data[0] & 0xc0:
             string += _extract_string(blob[data[0] ^ 0xc0:], blob)[0]
@@ -243,7 +246,10 @@ class ARecord(ResourceRecord):
     def address(self):
         """Get an address"""
         if self._address is None and self.rdata is not None:
-            self._address = inet_ntoa(self.rdata)
+            rdata = self.rdata
+            if isinstance(rdata, bytearray):
+                rdata = rdata.decode('ascii').encode('ascii')
+            self._address = inet_ntoa(rdata)
             return self._address
         elif self._address is not None:
             return self._address

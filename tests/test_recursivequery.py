@@ -1,5 +1,5 @@
 import unittest
-from dns.protocol import RecursiveDNSMessage, Question, QUERY_TYPE_A, DNSHeaderFlags
+from dns.protocol import RecursiveDNSMessage, Question, QUERY_TYPE_A
 import struct
 
 
