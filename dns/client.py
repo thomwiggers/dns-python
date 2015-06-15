@@ -4,6 +4,7 @@ from __future__ import print_function, absolute_import
 import sys
 import protocol as dns
 import socket
+import time
 
 UDP_PORT = 53
 
@@ -12,26 +13,36 @@ def resolve(server, destination):
 
     dnsMessage = dns.RecursiveDNSMessage()
     dnsMessage.identifier = 1
-
     question = dns.Question(destination, 1)
     dnsMessage.questions.append(question)
-    struct = dnsMessage.pack_struct()
 
-    sock.sendto(struct, (server, UDP_PORT))
+    sock.sendto(dnsMessage.pack_struct(), (server, UDP_PORT))
 
-    data, addr = sock.recvfrom(2048)
-    print ("received message:", data)
+    res = receive_response(sock)
+
+    print(res)
     sock.close()
+
+def receive_response(mySocket, timeout=5):
+    startTime = time.time()
+
+    while (startTime + timeout - time.time()) > 0:
+        try:
+            response, (addr, x) = mySocket.recvfrom(2048)
+        except socket.timeout:
+            break
+
+        return dns.DNSPacket.from_struct(response)
 
 def run():
     """
     DNS Client implementation in Python
 
     Usage:
-        client.py [options] <destination>
+        client.py -s server <destination>
 
-    Options:
-        -s,--server=dns_server  Specifies the dns server used to resolve the hostname.
+    options:
+        -s, --server dns_server
     """
     import docopt
     import textwrap
@@ -42,7 +53,7 @@ def run():
         print("You need to use Python 3.4")
         exit(2)
 
-    resolve(args['<destination>'], args['--server'] or '127.0.0.1')
+    resolve(args['--server'], args['<destination>'])
 
 if __name__ == '__main__':
     run()
