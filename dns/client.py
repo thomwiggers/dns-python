@@ -19,9 +19,17 @@ def resolve(server, destination):
     sock.sendto(dnsMessage.pack_struct(), (server, UDP_PORT))
 
     res = receive_response(sock)
-
-    print(res)
+    print_result(res, server, destination)
     sock.close()
+
+def print_result(dns, server, destination):
+    print("Server: \t{}".format(server))
+    print("Address: \t{}#{}\n".format(server, UDP_PORT))
+
+    print("Non-authorative answer:")
+    for answer in dns.answers:
+        print("Name:   {}".format(answer.name))
+        print("Address: {}".format(answer.rdata))
 
 def receive_response(mySocket, timeout=5):
     startTime = time.time()
