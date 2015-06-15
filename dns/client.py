@@ -29,7 +29,7 @@ def print_result(dns, server, destination):
     print("Non-authorative answer:")
     for answer in dns.answers:
         print("Name:   {}".format(answer.name))
-        print("Address: {}".format(answer.rdata))
+        print("Address: {}".format(answer.address))
 
 def receive_response(mySocket, timeout=5):
     startTime = time.time()

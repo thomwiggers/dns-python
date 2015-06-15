@@ -249,7 +249,7 @@ class ARecord(ResourceRecord):
         if self._address is None and self.rdata is not None:
             rdata = self.rdata
             if isinstance(rdata, bytearray):
-                rdata = rdata.decode('ascii').encode('ascii')
+                rdata = rdata.decode('latin1').encode('latin1')
             self._address = inet_ntoa(rdata)
             return self._address
         elif self._address is not None:
