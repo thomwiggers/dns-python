@@ -45,8 +45,9 @@ def _extract_string(data, blob):
     data = bytearray(data)
     while data and data[0] != 0:
         if data[0] & 0xc0:
-            string += _extract_string(blob[data[0] ^ 0xc0:], blob)[0]
-            data = data[1:]
+            offset = data[0] ^ 0xc0 + data[1]
+            string += _extract_string(blob[offset:], blob)[0]
+            data = data[2:]
             return (string, data)
         else:
             string += data[1:1+data[0]].decode('ascii') + '.'
