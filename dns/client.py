@@ -2,18 +2,20 @@
 
 from __future__ import print_function, absolute_import
 import sys
-import protocol as dns
 import socket
 import time
 
+from . import protocol
+
 UDP_PORT = 53
+
 
 def resolve(server, destination):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    dnsMessage = dns.RecursiveDNSMessage()
+    dnsMessage = protocol.RecursiveDNSMessage()
     dnsMessage.identifier = 1
-    question = dns.Question(destination, 1)
+    question = protocol.Question(destination, 1)
     dnsMessage.questions.append(question)
 
     sock.sendto(dnsMessage.pack_struct(), (server, UDP_PORT))
@@ -22,14 +24,17 @@ def resolve(server, destination):
     print_result(res, server, destination)
     sock.close()
 
+
 def print_result(dns, server, destination):
     print("Server: \t{}".format(server))
     print("Address: \t{}#{}\n".format(server, UDP_PORT))
 
-    print("Non-authorative answer:")
+    if not dns.flags.is_authoritive_answer:
+        print("Non-authorative answer:")
     for answer in dns.answers:
         print("Name:   {}".format(answer.name))
         print("Address: {}".format(answer.address))
+
 
 def receive_response(mySocket, timeout=5):
     startTime = time.time()
@@ -40,7 +45,8 @@ def receive_response(mySocket, timeout=5):
         except socket.timeout:
             break
 
-        return dns.DNSPacket.from_struct(response)
+        return protocol.DNSPacket.from_struct(response)
+
 
 def run():
     """
@@ -54,7 +60,6 @@ def run():
     """
     import docopt
     import textwrap
-    import os
     args = docopt.docopt(textwrap.dedent(run.__doc__), sys.argv[1:])
 
     if not sys.version_info > (3, 4, 0):
