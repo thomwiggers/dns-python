@@ -56,7 +56,7 @@ def _extract_string(data, blob):
     data = bytearray(data)
     while data and data[0] != 0:
         if data[0] & 0xc0:
-            offset = data[0] ^ 0xc0 + data[1]
+            offset = (data[0] ^ 0xc0) + data[1]
             string += _extract_string(blob[offset:], blob)[0]
             data = data[2:]
             return (string, data)
@@ -133,17 +133,17 @@ class DNSPacket(object):
 
         for i in range(ancount):
             (name, data) = _extract_string(data, struct_)
-            (rr, data) = ResourceRecord.from_struct(name, data)
+            (rr, data) = ResourceRecord.from_struct(name, data, struct_)
             packet.answers.append(rr)
 
         for i in range(nscount):
             (name, data) = _extract_string(data, struct_)
-            (rr, data) = ResourceRecord.from_struct(name, data)
+            (rr, data) = ResourceRecord.from_struct(name, data, struct_)
             packet.authorities.append(rr)
 
         for i in range(arcount):
             (name, data) = _extract_string(data, struct_)
-            (rr, data) = ResourceRecord.from_struct(name, data)
+            (rr, data) = ResourceRecord.from_struct(name, data, struct_)
             packet.additional.append(rr)
 
         return packet
@@ -214,7 +214,7 @@ class ResourceRecord(object):
         self.rdata = rdata  # resource data
 
     @classmethod
-    def from_struct(cls, name, struct_):
+    def from_struct(cls, name, struct_, blob):
         """Construct a ResourceRecord subclass from a struct. The name
         needs to have already been unpacked.
         """
@@ -226,9 +226,9 @@ class ResourceRecord(object):
         if type_ == Type.A:
             record = ARecord(name=name, ttl=ttl, rdata=rdata)
         elif type_ == Type.CNAME:
-            record = CNAMERecord(name=name, ttl=ttl, rdata=rdata)
+            record = CNAMERecord(blob, name=name, ttl=ttl, rdata=rdata)
         elif type_ == Type.NS:
-            record = NSRecord(struct_, name=name, ttl=ttl, rdata=rdata)
+            record = NSRecord(blob, name=name, ttl=ttl, rdata=rdata)
         else:
             raise NotImplementedError(
                 "Got a resource type we don't understand")
@@ -294,7 +294,7 @@ class NSRecord(ResourceRecord):
             rdata = self.rdata
             if isinstance(rdata, bytearray):
                 rdata = rdata.decode('latin1').encode('latin1')
-            self._nsdname = _parse_string(rdata, self._struct)
+            self._nsdname = _extract_string(rdata, self._struct)
         elif self._nsdname is not None:
             return self._nsdname
         else:
@@ -303,14 +303,26 @@ class NSRecord(ResourceRecord):
 
 class CNAMERecord(ResourceRecord):
     """DNS CNAME Record"""
-
     type_ = Type.CNAME
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, _struct, *args, **kwargs):
         super(CNAMERecord, self).__init__(*args, **kwargs)
+        self._struct = _struct
+        self._cname = None
 
-    def get_cname(self):
-        raise NotImplementedError("Not yet implemented")
+    @property
+    def cname(self):
+        if self._cname is None and self.rdata is not None:
+            rdata = self.rdata
+            if isinstance(rdata, bytearray):
+                rdata = rdata.decode('latin1').encode('latin1')
+            (self._cname, data) = _extract_string(rdata, self._struct)
+            return self._cname
+        elif self._cname is not None:
+            return self._cname
+        else:
+            return ValueError("No CName and no rdata?!")
+
 
     @property
     def size(self):

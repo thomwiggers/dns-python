@@ -32,11 +32,11 @@ def print_result(dns, server, destination):
     if not dns.flags.is_authorative_answer:
         print("Non-authorative answer:")
     for answer in dns.answers:
-        if isinstance(answer, protocol.NSRecord):
-            print("NSName: {}".format(answer.nsdname))
-
-        print("Name:   {}".format(answer.name))
-        print("Address: {}".format(answer.address))
+        if isinstance(answer, protocol.CNAMERecord):
+            print("{}\t canonical name = {}".format(answer.name, answer.cname))
+        elif isinstance(answer, protocol.ARecord):
+            print("Name:   {}".format(answer.name))
+            print("Address: {}".format(answer.address))
 
 
 def receive_response(mySocket, timeout=5):
