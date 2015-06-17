@@ -227,6 +227,8 @@ class ResourceRecord(object):
             record = ARecord(name=name, ttl=ttl, rdata=rdata)
         elif type_ == Type.CNAME:
             record = CNAMERecord(name=name, ttl=ttl, rdata=rdata)
+        elif type_ == Type.NS:
+            record = NSRecord(struct_, name=name, ttl=ttl, rdata=rdata)
         else:
             raise NotImplementedError(
                 "Got a resource type we don't understand")
@@ -273,6 +275,30 @@ class ARecord(ResourceRecord):
         if self.rdata:
             return self.rdata
         return inet_aton(self._address)
+
+
+class NSRecord(ResourceRecord):
+    """DNS NS Record"""
+    type_ = Type.NS
+
+    def __init__(self, _struct, nsdname=None, *args, **kwargs):
+        """Construct a NS record"""
+        super(NSRecord, self).__init__(*args, **kwargs)
+        self._nsdname = nsdname
+        self._struct = _struct
+
+    @property
+    def nsdname(self):
+        """Get nsd data"""
+        if self._nsdname is None and self.rdata is not None:
+            rdata = self.rdata
+            if isinstance(rdata, bytearray):
+                rdata = rdata.decode('latin1').encode('latin1')
+            self._nsdname = _parse_string(rdata, self._struct)
+        elif self._nsdname is not None:
+            return self._nsdname
+        else:
+            return ValueError("No NSDName and no rdata?!")
 
 
 class CNAMERecord(ResourceRecord):

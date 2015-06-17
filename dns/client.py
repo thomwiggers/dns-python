@@ -5,7 +5,7 @@ import sys
 import socket
 import time
 
-from . import protocol
+import protocol
 
 UDP_PORT = 53
 
@@ -29,9 +29,12 @@ def print_result(dns, server, destination):
     print("Server: \t{}".format(server))
     print("Address: \t{}#{}\n".format(server, UDP_PORT))
 
-    if not dns.flags.is_authoritive_answer:
+    if not dns.flags.is_authorative_answer:
         print("Non-authorative answer:")
     for answer in dns.answers:
+        if isinstance(answer, protocol.NSRecord):
+            print("NSName: {}".format(answer.nsdname))
+
         print("Name:   {}".format(answer.name))
         print("Address: {}".format(answer.address))
 
