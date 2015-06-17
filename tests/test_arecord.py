@@ -2,7 +2,7 @@ import unittest
 
 import struct
 from socket import inet_aton, inet_ntoa
-from dns.protocol import ARecord, QUERY_TYPE_A, QUERY_CLASS_IN
+from dns.protocol import ARecord, Type, QUERY_CLASS_IN
 
 
 class ARecordTest(unittest.TestCase):
@@ -30,7 +30,7 @@ class ARecordTest(unittest.TestCase):
         data = struct_[len(packed_name):]
 
         (type_, class_, ttl, length) = struct.unpack_from('!HHlH', data)
-        assert type_ == QUERY_TYPE_A
+        assert type_ == Type.A
         assert class_ == QUERY_CLASS_IN
         assert ttl == 123
         assert length == 4

@@ -3,16 +3,27 @@ from __future__ import print_function, unicode_literals
 from socket import inet_ntoa, inet_aton
 import struct
 
+
 QUERY_CLASS_IN = 1
 
-QUERY_TYPE_A = 1
-QUERY_TYPE_AAAA = 28
-QUERY_TYPE_CNAME = 5
-QUERY_TYPE_MX = 15
-QUERY_TYPE_NS = 2
-QUERY_TYPE_SOA = 6
-QUERY_TYPE_SRV = 33
-QUERY_TYPE_TXT = 16
+
+class Type(object):
+    A = 1
+    NS = 2
+    MD = 3
+    MF = 4
+    CNAME = 5
+    SOA = 6
+    MB = 7
+    MG = 8
+    MR = 9
+    NULL = 10
+    WKS = 11
+    PTR = 12
+    HINFO = 13
+    MINFO = 14
+    MX = 15
+    TXT = 16
 
 
 def _pack_name(name):
@@ -212,9 +223,9 @@ class ResourceRecord(object):
 
         assert class_ == QUERY_CLASS_IN, "Only the internet class is supported"
 
-        if type_ == QUERY_TYPE_A:
+        if type_ == Type.A:
             record = ARecord(name=name, ttl=ttl, rdata=rdata)
-        elif type_ == QUERY_TYPE_CNAME:
+        elif type_ == Type.CNAME:
             record = CNAMERecord(name=name, ttl=ttl, rdata=rdata)
         else:
             raise NotImplementedError(
@@ -235,7 +246,7 @@ class ResourceRecord(object):
 class ARecord(ResourceRecord):
     """DNS A Record"""
 
-    type_ = QUERY_TYPE_A
+    type_ = Type.A
     size = 4
 
     def __init__(self, address=None, *args, **kwargs):
@@ -267,7 +278,7 @@ class ARecord(ResourceRecord):
 class CNAMERecord(ResourceRecord):
     """DNS CNAME Record"""
 
-    type_ = QUERY_TYPE_CNAME
+    type_ = Type.CNAME
 
     def __init__(self, *args, **kwargs):
         super(CNAMERecord, self).__init__(*args, **kwargs)

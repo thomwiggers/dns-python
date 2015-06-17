@@ -1,5 +1,5 @@
 import unittest
-from dns.protocol import RecursiveDNSMessage, Question, QUERY_TYPE_A
+from dns.protocol import RecursiveDNSMessage, Question, Type
 import struct
 
 
@@ -8,7 +8,7 @@ class TestRecursiveDNSMessageHeader(unittest.TestCase):
     def _get_header(self):
         dnspacket = RecursiveDNSMessage()
         dnspacket.identifier = 3
-        q = Question(qname='foobar.com', qtype=QUERY_TYPE_A)
+        q = Question(qname='foobar.com', qtype=Type.A)
         dnspacket.questions.append(q)
         dnspacket.questions.append(q)
         header = struct.unpack_from("!HHHHHH", dnspacket.pack_struct())

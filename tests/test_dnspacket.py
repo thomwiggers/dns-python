@@ -1,5 +1,5 @@
 import unittest
-from dns.protocol import (Question, QUERY_TYPE_A, DNSHeaderFlags,
+from dns.protocol import (Question, Type, DNSHeaderFlags,
                           ARecord, DNSPacket)
 import struct
 
@@ -15,7 +15,7 @@ class DNSPacketTest(unittest.TestCase):
         packet += flags.pack_struct()
         packet += struct.pack('!HHHH', 1, 1, 1, 1)
 
-        q = Question(qname='test.com', qtype=QUERY_TYPE_A)
+        q = Question(qname='test.com', qtype=Type.A)
         packet += q.pack_struct()
 
         a = ARecord(name='foo.com', address='127.0.0.1', ttl=123)
@@ -31,7 +31,7 @@ class DNSPacketTest(unittest.TestCase):
         assert len(p.additional) == 1
 
         assert p.questions[0].qname == 'test.com.'
-        assert p.questions[0].qtype == QUERY_TYPE_A
+        assert p.questions[0].qtype == Type.A
 
         for item in (p.answers, p.authorities, p.additional):
             item[0].name == 'foo.com.'
