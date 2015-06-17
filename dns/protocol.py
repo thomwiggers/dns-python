@@ -24,6 +24,7 @@ class Type(object):
     MINFO = 14
     MX = 15
     TXT = 16
+    OPT = 41
 
 
 def _pack_name(name):
@@ -109,7 +110,6 @@ class DNSPacket(object):
     """A DNS Packet"""
 
     def __init__(self):
-        self.is_query = False
         self.questions = []
         self.answers = []
         self.authorities = []
@@ -144,7 +144,8 @@ class DNSPacket(object):
         for i in range(arcount):
             (name, data) = _extract_string(data, struct_)
             (rr, data) = ResourceRecord.from_struct(name, data, struct_)
-            packet.additional.append(rr)
+            if rr is not None:
+                packet.additional.append(rr)
 
         return packet
 
@@ -221,17 +222,19 @@ class ResourceRecord(object):
         (type_, class_, ttl, rdlength) = struct.unpack_from('!HHlH', struct_)
         rdata = struct_[10:10+rdlength]
 
-        assert class_ == QUERY_CLASS_IN, "Only the internet class is supported"
-
         if type_ == Type.A:
             record = ARecord(name=name, ttl=ttl, rdata=rdata)
         elif type_ == Type.CNAME:
             record = CNAMERecord(blob, name=name, ttl=ttl, rdata=rdata)
         elif type_ == Type.NS:
             record = NSRecord(blob, name=name, ttl=ttl, rdata=rdata)
+        elif type_ == Type.OPT:
+            return (None, struct_[10+rdlength:])
         else:
             raise NotImplementedError(
                 "Got a resource type we don't understand")
+
+        assert class_ == QUERY_CLASS_IN, "Only the internet class is supported"
 
         return (record, struct_[10+rdlength:])
 
@@ -322,7 +325,6 @@ class CNAMERecord(ResourceRecord):
             return self._cname
         else:
             return ValueError("No CName and no rdata?!")
-
 
     @property
     def size(self):
