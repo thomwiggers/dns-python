@@ -247,6 +247,15 @@ class ResourceRecord(object):
                             len(self.pack_rdata())
                             ) + self.pack_rdata())
 
+    @classmethod
+    def from_dict(cls, data):
+        if data['type'] == 'A':
+            return ARecord(name=data['name'], ttl=data['ttl'],
+                           address=data['address'])
+        elif data['type'] == 'NS':
+            return NSRecord(name=data['name'], ttl=data['ttl'],
+                            nsdname=data['nsdname'])
+
 
 class ARecord(ResourceRecord):
     """DNS A Record"""
@@ -279,6 +288,9 @@ class ARecord(ResourceRecord):
             return self.rdata
         return inet_aton(self._address)
 
+    def to_dict(self):
+        return {'type': 'A', 'address': self.address, 'ttl': self.ttl}
+
 
 class NSRecord(ResourceRecord):
     """DNS NS Record"""
@@ -302,6 +314,9 @@ class NSRecord(ResourceRecord):
             return self._nsdname
         else:
             return ValueError("No NSDName and no rdata?!")
+
+    def to_dict(self):
+        return {'type': 'A', 'nsdname': self.nsdname, 'ttl': self.ttl}
 
 
 class CNAMERecord(ResourceRecord):
@@ -332,3 +347,6 @@ class CNAMERecord(ResourceRecord):
 
     def pack_rdata(self):
         raise NotImplementedError("Not yet implemented")
+
+    def to_dict(self):
+        return {'type': 'A', 'cname': self.cname, 'ttl': self.ttl}
