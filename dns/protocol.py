@@ -33,11 +33,11 @@ def _extract_string(data, blob):
     r"""Extract a string from the blob
 
     >>> _extract_string(b'\x04test\x02nl\x00test', b'') == \
-    ... ('test.nl.', bytearray(b'test'))
+    ... (u'test.nl.', bytearray(b'test'))
     True
-    >>> _extract_string(b'\x04test\xc0test',
+    >>> _extract_string(b'\x04test\xc0\x00test',
     ...                 b'\x09fietsband\x00') == \
-    ... ('test.fietsband.', bytearray(b'test'))
+    ... (u'test.fietsband.', bytearray(b'test'))
     True
 
     """
