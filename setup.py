@@ -18,6 +18,13 @@ if sys.argv[-1] == 'publish':
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
+requires = []
+
+if sys.version_info < (3, 4, 0):
+    requires += [
+            'enum34'
+    ]
+
 setup(
     name='dns',
     version='0.1.0',
@@ -32,8 +39,7 @@ setup(
     package_dir={'dns':
                  'dns'},
     include_package_data=True,
-    install_requires=[
-    ],
+    install_requires=requires,
     license="BSD",
     zip_safe=False,
     keywords='dns',
