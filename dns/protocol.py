@@ -130,17 +130,20 @@ class DNSPacket(object):
         for i in range(qdcount):
             (name, data) = _extract_string(data, struct_)
             (q, data) = Question.from_struct(name, data)
-            packet.questions.append(q)
+            if q is not None:
+                packet.questions.append(q)
 
         for i in range(ancount):
             (name, data) = _extract_string(data, struct_)
             (rr, data) = ResourceRecord.from_struct(name, data, struct_)
-            packet.answers.append(rr)
+            if rr is not None:
+                packet.answers.append(rr)
 
         for i in range(nscount):
             (name, data) = _extract_string(data, struct_)
             (rr, data) = ResourceRecord.from_struct(name, data, struct_)
-            packet.authorities.append(rr)
+            if rr is not None:
+                packet.authorities.append(rr)
 
         for i in range(arcount):
             (name, data) = _extract_string(data, struct_)
@@ -247,7 +250,6 @@ class ResourceRecord(object):
 
     @classmethod
     def from_dict(cls, name, data):
-        print('constructing')
         if data['type'] == 'A':
             return ARecord(name=name, ttl=data['ttl'],
                            address=data['address'])
@@ -293,6 +295,9 @@ class ARecord(ResourceRecord):
 
     def to_dict(self):
         return {'type': 'A', 'address': self.address, 'ttl': self.ttl}
+
+    def __repr__(self):
+        return '<ARecord address=%s>' % self.address
 
 
 class NSRecord(ResourceRecord):
@@ -347,10 +352,12 @@ class CNAMERecord(ResourceRecord):
 
     @property
     def size(self):
-        return len(self.get_rdata())
+        return len(self.pack_rdata())
 
     def pack_rdata(self):
-        raise NotImplementedError("Not yet implemented")
+        if self.rdata:
+            return self.rdata
+        return _pack_name(self._cname)
 
     def to_dict(self):
         return {'type': 'CNAME', 'cname': self.cname, 'ttl': self.ttl}

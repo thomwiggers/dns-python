@@ -86,9 +86,23 @@ class DNSServerProtocol(object):
         print('Received %s from %s' % (data, addr))
 
         packet = protocol.DNSPacket.from_struct(data)
+        results = []
 
         for question in packet.questions:
-            self.handle_question(question)
+            results += self.handle_question(question)
+
+        self.return_results(packet.identifier, results, addr)
+
+    def connection_lost(self, exc):
+        pass
+
+    def return_results(self, identifier, results, addr):
+        packet = protocol.DNSPacket()
+        packet.flags.is_response = True
+        packet.answers = results
+        packet.identifier = identifier
+
+        self.transport.sendto(packet.pack_struct(), addr)
 
     def handle_question(self, question):
         """ Ik weet het even niet meer"""
@@ -99,6 +113,19 @@ class DNSServerProtocol(object):
         # if: CNAME voor domein: vraag A op voor CNAME
         # elif: A record: done
         # else: NS record: vraag A record op voor NS
+
+        record = self.lookup_cache(question.qtype, question.qname)
+        if not record:
+            # try cnames
+            records = []
+            record = self.lookup_cache(protocol.Type.CNAME, question.qname)
+            while record:
+                records.append(record)
+                record = self.lookup_cache(protocol.Type.CNAME, record.cname)
+            if len(records) > 0:
+                record = self.lookup_cache(question.qtype, records[-1].cname)
+            if record:
+                return records + [record]
 
         last_ns_ip = None
         server = self.resolve_name(protocol.Type.NS, '.', last_ns_ip).nsdname
@@ -111,19 +138,21 @@ class DNSServerProtocol(object):
             else:
                 print('trying to find name server ip', server)
                 q = protocol.Question(server, protocol.Type.A)
-                last_ns_ip = self.handle_question(q).address
+                last_ns_ip = self.handle_question(q)[0].address
             print('found', last_ns_ip)
 
             result = self.resolve_name(question.qtype,
                                        question.qname,
                                        last_ns_ip)
+            if not result:
+                return []
             if result.type_ == question.qtype:
                 print('returning result', result)
-                return result
+                return [result]
             elif result.type_ == protocol.Type.CNAME:
                 print('cname!')
                 q = protocol.Question(result.cname, question.qtype)
-                return self.handle_question(q)
+                return [result] + self.handle_question(q)
             elif result.type_ == protocol.Type.NS:
                 server = result.nsdname
 
@@ -134,7 +163,8 @@ class DNSServerProtocol(object):
         if result:
             return result
         else:
-            packet = resolve_question(type_, name, server)
+            print('sending question over the network')
+            packet = resolve_question(type_, name, server, recursive=False)
             self.cache_packet(packet)
             for rr in (packet.answers
                        + packet.authorities
@@ -149,6 +179,7 @@ class DNSServerProtocol(object):
         for record in (packet.answers
                        + packet.authorities
                        + packet.additional):
+            print(record)
             self.cache[record.name] += [record.to_dict()]
 
     def lookup_cache(self, type_, name):
