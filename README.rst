@@ -17,7 +17,9 @@ Limitations
 * The server and client don't really account for dropped UDP packets. The server
   will expect clients to re-request everything.
 
-* SOA records aren't created or returned for non-existant names.
+* SOA records aren't created or returned for non-existant names. The 'no
+  results' error rcode won't be set, as the specification specifies that this
+  flag is only to be set by authorative name servers.
 
 * Only A and CNAME records are supported.
 
