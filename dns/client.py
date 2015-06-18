@@ -1,25 +1,35 @@
 # -*- coding: utf8 -*-
 
 from __future__ import print_function, absolute_import
+import random
 import sys
 import socket
 import time
 
 import protocol
 
-def resolve(server, destination, port):
+UDP_PORT = 53
+
+
+def resolve_question(type_, name, server, recursive=True, port=UDP_PORT):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    dnsMessage = protocol.RecursiveDNSMessage()
-    dnsMessage.identifier = 1
-    question = protocol.Question(destination, 1)
+    dnsMessage = protocol.DNSPacket()
+    dnsMessage.flags.recursion_desired = recursive
+    dnsMessage.identifier = random.getrandbits(16)
+    question = protocol.Question(name, type_)
     dnsMessage.questions.append(question)
 
     sock.sendto(dnsMessage.pack_struct(), (server, port))
 
-    res = receive_response(sock)
-    print_result(res, server, destination, port)
+    res = receive_response(sock, dnsMessage.identifier)
     sock.close()
+    return res
+
+
+def resolve(server, destination, port):
+    res = resolve_question(protocol.Type.A, destination, server, port=port)
+    print_result(res, server, destination, port)
 
 
 def print_result(dns, server, destination, port):
@@ -39,7 +49,7 @@ def print_result(dns, server, destination, port):
             print("Address: {}".format(answer.address))
 
 
-def receive_response(mySocket, timeout=5):
+def receive_response(mySocket, identifier, timeout=5):
     startTime = time.time()
 
     while (startTime + timeout - time.time()) > 0:
@@ -48,7 +58,11 @@ def receive_response(mySocket, timeout=5):
         except socket.timeout:
             break
 
-        return protocol.DNSPacket.from_struct(response)
+        result = protocol.DNSPacket.from_struct(response)
+        if result.identifier != identifier:
+            raise Exception("Got a message for another id")
+
+        return result
 
 
 def run():

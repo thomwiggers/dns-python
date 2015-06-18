@@ -18,6 +18,19 @@ if sys.argv[-1] == 'publish':
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
+requirements = []
+
+if sys.version_info < (3, 0):
+    requirements += [
+        'enum34',
+        'futures',
+        'trollius'
+    ]
+elif sys.version_info < (3, 4):
+    requirements += [
+        'enum34',
+    ]
+
 setup(
     name='dns',
     version='0.1.0',
@@ -32,15 +45,15 @@ setup(
     package_dir={'dns':
                  'dns'},
     include_package_data=True,
-    install_requires=[
-    ],
+    install_requires=requirements,
     license="BSD",
     zip_safe=False,
     keywords='dns',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU General Public Licence v3 or later (GPLv3+)',
+        ('License :: OSI Approved :: '
+         'GNU General Public Licence v3 or later (GPLv3+)'),
         'Natural Language :: English',
         "Programming Language :: Python :: 2",
         'Programming Language :: Python :: 2.7',

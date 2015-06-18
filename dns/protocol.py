@@ -1,13 +1,14 @@
 from __future__ import print_function, unicode_literals
 
 from socket import inet_ntoa, inet_aton
+from enum import Enum
 import struct
 
 
 QUERY_CLASS_IN = 1
 
 
-class Type(object):
+class Type(Enum):
     A = 1
     NS = 2
     MD = 3
@@ -197,11 +198,11 @@ class Question(object):
     def from_struct(cls, name, struct_):
         """Transform a struct (without the name) into a question."""
         (type_, class_) = struct.unpack_from('!HH', struct_)
-        return (cls(qname=name, qtype=type_, qclass=class_), struct_[4:])
+        return (cls(qname=name, qtype=Type(type_), qclass=class_), struct_[4:])
 
     def pack_struct(self):
         return _pack_name(self.qname) + struct.pack('!HH',
-                                                    self.qtype,
+                                                    self.qtype.value,
                                                     self.qclass)
 
 
@@ -222,13 +223,13 @@ class ResourceRecord(object):
         (type_, class_, ttl, rdlength) = struct.unpack_from('!HHlH', struct_)
         rdata = struct_[10:10+rdlength]
 
-        if type_ == Type.A:
+        if type_ == Type.A.value:
             record = ARecord(name=name, ttl=ttl, rdata=rdata)
-        elif type_ == Type.CNAME:
-            record = CNAMERecord(blob, name=name, ttl=ttl, rdata=rdata)
-        elif type_ == Type.NS:
-            record = NSRecord(blob, name=name, ttl=ttl, rdata=rdata)
-        else: #not supported
+        elif type_ == Type.CNAME.value:
+            record = CNAMERecord(struct_=blob, name=name, ttl=ttl, rdata=rdata)
+        elif type_ == Type.NS.value:
+            record = NSRecord(struct_=blob, name=name, ttl=ttl, rdata=rdata)
+        else:  # not supported
             return (None, struct_[10+rdlength:])
 
         assert class_ == QUERY_CLASS_IN, "Only the internet class is supported"
@@ -238,20 +239,22 @@ class ResourceRecord(object):
     def pack_struct(self):
         return (_pack_name(self.name) +
                 struct.pack('!HHlH',
-                            self.type_,
+                            self.type_.value,
                             self.class_,
                             self.ttl,
                             len(self.pack_rdata())
                             ) + self.pack_rdata())
 
     @classmethod
-    def from_dict(cls, data):
+    def from_dict(cls, name, data):
         if data['type'] == 'A':
-            return ARecord(name=data['name'], ttl=data['ttl'],
+            return ARecord(name=name, ttl=data['ttl'],
                            address=data['address'])
         elif data['type'] == 'NS':
-            return NSRecord(name=data['name'], ttl=data['ttl'],
+            return NSRecord(name=name, ttl=data['ttl'],
                             nsdname=data['nsdname'])
+        elif data['type'] == 'CNAME':
+            return CNAMERecord(name=name, cname=data['cname'], ttl=data['ttl'])
 
 
 class ARecord(ResourceRecord):
@@ -293,11 +296,11 @@ class NSRecord(ResourceRecord):
     """DNS NS Record"""
     type_ = Type.NS
 
-    def __init__(self, _struct, nsdname=None, *args, **kwargs):
+    def __init__(self, struct_=None, nsdname=None, *args, **kwargs):
         """Construct a NS record"""
         super(NSRecord, self).__init__(*args, **kwargs)
         self._nsdname = nsdname
-        self._struct = _struct
+        self._struct = struct_
 
     @property
     def nsdname(self):
@@ -320,10 +323,10 @@ class CNAMERecord(ResourceRecord):
     """DNS CNAME Record"""
     type_ = Type.CNAME
 
-    def __init__(self, _struct, *args, **kwargs):
+    def __init__(self, cname=None, struct_=None, *args, **kwargs):
         super(CNAMERecord, self).__init__(*args, **kwargs)
-        self._struct = _struct
-        self._cname = None
+        self._struct = struct_
+        self._cname = cname
 
     @property
     def cname(self):

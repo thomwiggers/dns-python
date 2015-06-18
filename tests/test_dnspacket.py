@@ -24,7 +24,7 @@ class DNSPacketTest(unittest.TestCase):
         packet += a.pack_struct()
 
         p = DNSPacket.from_struct(packet)
-        assert not p.is_query
+        assert p.flags.is_response
         assert len(p.questions) == 1
         assert len(p.answers) == 1
         assert len(p.authorities) == 1

@@ -12,13 +12,13 @@ class ResourceRecordTest(unittest.TestCase):
 
     def test_arecord_from_struct(self):
         struct_ = struct.pack('!HHlH',
-                              Type.A,
+                              Type.A.value,
                               QUERY_CLASS_IN,
                               42,
                               12)
         struct_ += bytearray(b'foobarbazbiz')
         name = "thomwiggers.nl"
-        (instance, x) = ResourceRecord.from_struct(name, struct_)
+        (instance, x) = ResourceRecord.from_struct(name, struct_, b'')
 
         assert len(x) == 0
         assert isinstance(instance, ARecord)
@@ -28,13 +28,13 @@ class ResourceRecordTest(unittest.TestCase):
 
     def test_cname_from_struct(self):
         struct_ = struct.pack('!HHlH',
-                              Type.CNAME,
+                              Type.CNAME.value,
                               QUERY_CLASS_IN,
                               42,
                               12)
         struct_ += bytearray(b'foobarbazbiz')
         name = "thomwiggers.nl"
-        (instance, x) = ResourceRecord.from_struct(name, struct_)
+        (instance, x) = ResourceRecord.from_struct(name, struct_, b'')
 
         assert len(x) == 0
         assert isinstance(instance, CNAMERecord)

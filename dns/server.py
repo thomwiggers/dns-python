@@ -4,9 +4,10 @@ from __future__ import print_function, absolute_import
 
 import asyncio
 import random
+import sys
 
 import protocol
-import sys
+from client import resolve_question
 
 caching = False
 
@@ -52,10 +53,25 @@ cache = {
 }
 
 
+def _get_ip_from_packet(packet, name):
+    return _get_result_from_packet(packet, protocol.Type.A, name).address
+
+
+def _get_result_from_packet(packet, type_, name):
+    for record in packet.answers + packet.additional:
+        if not record.name == name:
+            continue
+
+        if isinstance(record, protocol.CNAMERecord):
+            return _get_result_from_packet(packet, type_, record.cname)
+        elif record.type_ == type_:
+            return record
+
+
 class DNSServerProtocol(object):
 
     def __init__(self):
-        if caching:
+        if not caching:
             self.cache = cache.copy()
         else:
             self.cache = cache
@@ -71,25 +87,56 @@ class DNSServerProtocol(object):
         for question in packet.questions:
             self.handle_question(question)
 
-    def handle_question(question):
+    def handle_question(self, question):
         """ Ik weet het even niet meer"""
+        # Vraag NS voor '.'
+        # Vraag NS van domein op aan root
+        # Vraag A van eerste NS op aan root
+        # Vraag NS van domein op aan gekregen NS
+        # if: CNAME voor domein: vraag A op voor CNAME
+        # elif: A record: done
+        # else: NS record: vraag A record op voor NS
+
+        previous_server = None
+        server = self.resolve_name(protocol.Type.NS, '.').nsdname
+        for x in range(50):
+            result = self.resolve_name(question.qtype.name, question.qname,
+                                       server, previous_server)
+            if result.is_authorative:
+                return result.answers[0]
+            else:
+                for x in result.authorities:
+                    if x.type_ == protocol.Type.NS:
+                        previous_server = server
+                        server = x.nsdname
+
+        raise Exception("Too many queries")
+
+    def resolve_name(self, type_, name, server=None, previous_server=None):
+        result = self.lookup_cache(type_, name)
+        if not result and server:
+            ns = self.resolve_name(protocol.Type.A, server, previous_server)
+            ns_ip = _get_ip_from_packet(ns)
+            result = resolve_question(type_, name, ns_ip)
+            self.cache_packet(result)
+            return self.lookup_cache(type_, name)
+
+        return result
 
     def cache_packet(self, packet):
         """Stores a packet in the local cache"""
-        for record in (packet.questions
-                       + packet.answers
+        for record in (packet.answers
                        + packet.authorities
                        + packet.additional):
             self.cache[record.name] = record.to_dict()
 
     def lookup_cache(self, type_, name):
-        if name == '':
-            name = '.'
         records = cache.get(name, [])
         random.shuffle(records)
         for record in records:
-            if record['type'] == type_:
-                return protocol.ResourceRecord.from_dict(record)
+            print(record)
+            if record['type'] == type_.name:
+                return protocol.ResourceRecord.from_dict(name, record)
 
 
 def run():
