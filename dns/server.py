@@ -128,8 +128,18 @@ class DNSServerProtocol(object):
                 return records + [record]
 
         last_ns_ip = None
-        server = self.resolve_name(protocol.Type.NS, '.', last_ns_ip).nsdname
-        print(server)
+
+        server = None
+        current_name = question.qname.split('.')
+        while len(current_name) > 0:
+            fullname = ('.'.join(current_name)).strip('.') + '.'
+            nsrecord = self.lookup_cache(protocol.Type.NS, fullname)
+            if nsrecord is not None:
+                server = nsrecord.nsdname
+                break
+            current_name = current_name[1:]
+
+        print("Found NS Cache for ", fullname)
         for x in range(50):
             print('resolving ip for ns', server)
             cached = self.lookup_cache(protocol.Type.A, server)
