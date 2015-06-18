@@ -6,6 +6,7 @@ import asyncio
 import random
 
 import protocol
+import sys
 
 caching = False
 
@@ -91,18 +92,47 @@ class DNSServerProtocol(object):
                 return protocol.ResourceRecord.from_dict(record)
 
 
-loop = asyncio.get_event_loop()
-print("Starting DNS server")
+def run():
+    """
+    DNS Client implementation in Python
 
-listen = loop.create_datagram_endpoint(
-    DNSServerProtocol, local_addr=('127.0.0.1', 53))
+    Usage:
+        server.py [options]
 
-transport, async_protocol = loop.run_until_complete(listen)
+    options:
+        -c, --caching
+        -p, --port port
+        -r, --round_robin
+        -t, --ttl time_to_live
+    """
+    import docopt
+    import textwrap
+    args = docopt.docopt(textwrap.dedent(run.__doc__), sys.argv[1:])
 
-try:
-    loop.run_forever()
-except KeyboardInterrupt:
-    pass
+    if not sys.version_info > (3, 4, 0):
+        print("You need to use Python 3.4")
+        exit(2)
 
-transport.close()
-loop.close()
+    loop = asyncio.get_event_loop()
+    print("Starting DNS server")
+
+    caching = args['--caching']
+    port = int(args['--port']) if args['--port'] else 53
+    round_robin = args['--round_robin']
+    ttl = args['--ttl']
+
+    listen = loop.create_datagram_endpoint(
+        DNSServerProtocol, local_addr=('127.0.0.1', port))
+
+    transport, async_protocol = loop.run_until_complete(listen)
+
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
+
+    transport.close()
+    loop.close()
+
+if __name__ == '__main__':
+    run()

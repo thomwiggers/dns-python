@@ -7,10 +7,7 @@ import time
 
 import protocol
 
-UDP_PORT = 53
-
-
-def resolve(server, destination):
+def resolve(server, destination, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     dnsMessage = protocol.RecursiveDNSMessage()
@@ -18,16 +15,16 @@ def resolve(server, destination):
     question = protocol.Question(destination, 1)
     dnsMessage.questions.append(question)
 
-    sock.sendto(dnsMessage.pack_struct(), (server, UDP_PORT))
+    sock.sendto(dnsMessage.pack_struct(), (server, port))
 
     res = receive_response(sock)
-    print_result(res, server, destination)
+    print_result(res, server, destination, port)
     sock.close()
 
 
-def print_result(dns, server, destination):
+def print_result(dns, server, destination, port):
     print("Server: \t{}".format(server))
-    print("Address: \t{}#{}\n".format(server, UDP_PORT))
+    print("Address: \t{}#{}\n".format(server, port))
 
     if not dns.flags.is_authorative_answer:
         print("Non-authorative answer:")
@@ -56,10 +53,11 @@ def run():
     DNS Client implementation in Python
 
     Usage:
-        client.py -s server <destination>
+        client.py [options] -s server <destination>
 
     options:
         -s, --server dns_server
+        -p, --port port
     """
     import docopt
     import textwrap
@@ -69,7 +67,8 @@ def run():
         print("You need to use Python 3.4")
         exit(2)
 
-    resolve(args['--server'], args['<destination>'])
+    port = int(args['--port']) if args['--port'] else 53
+    resolve(args['--server'], args['<destination>'], port)
 
 if __name__ == '__main__':
     run()
