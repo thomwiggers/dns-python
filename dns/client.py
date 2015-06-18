@@ -26,6 +26,9 @@ def print_result(dns, server, destination, port):
     print("Server: \t{}".format(server))
     print("Address: \t{}#{}\n".format(server, port))
 
+    if len(dns.answers) == 0:
+        print("** server can't find {}: NXDOMAIN".format(destination))
+        return
     if not dns.flags.is_authorative_answer:
         print("Non-authorative answer:")
     for answer in dns.answers:
