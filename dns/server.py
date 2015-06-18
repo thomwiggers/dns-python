@@ -9,8 +9,8 @@ import random
 import sys
 import json
 
-import protocol
-from client import resolve_question
+from . import protocol
+from .client import resolve_question
 
 cache = defaultdict(list)
 
@@ -96,7 +96,8 @@ class DNSServerProtocol(object):
         for question in packet.questions:
             results += self.handle_question(question)
 
-        self.return_results(packet.identifier, results, addr)
+        self.return_results(packet.identifier, packet.questions,
+                            results, addr)
 
         if not self.caching:  # restore query cache
             self.cache = cache.copy()
@@ -106,9 +107,10 @@ class DNSServerProtocol(object):
     def connection_lost(self, exc):
         pass
 
-    def return_results(self, identifier, results, addr):
+    def return_results(self, identifier, questions, results, addr):
         packet = protocol.DNSPacket()
         packet.flags.is_response = True
+        packet.questions = questions
         packet.answers = results
         packet.identifier = identifier
 

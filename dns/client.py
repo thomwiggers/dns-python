@@ -6,7 +6,7 @@ import sys
 import socket
 import time
 
-import protocol
+from . import protocol
 
 UDP_PORT = 53
 

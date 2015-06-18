@@ -61,4 +61,11 @@ setup(
         'Programming Language :: Python :: 3.4',
     ],
     test_suite='tests',
+    entry_points={
+        'console_scripts': [
+            'dns-client = dns.client:run',
+            'dns-server = dns.server:run',
+        ]
+    }
+
 )
