@@ -6,11 +6,10 @@ import asyncio
 from collections import defaultdict
 import random
 import sys
+import json
 
 import protocol
 from client import resolve_question
-
-caching = False
 
 cache = defaultdict(list)
 
@@ -73,7 +72,9 @@ def _get_result_from_packet(packet, type_, name):
 
 class DNSServerProtocol(object):
 
-    def __init__(self):
+    def __init__(self, caching=False, ttl=None):
+        self.caching = caching
+        self.ttl = None
         if not caching:
             self.cache = cache.copy()
         else:
@@ -92,6 +93,9 @@ class DNSServerProtocol(object):
             results += self.handle_question(question)
 
         self.return_results(packet.identifier, results, addr)
+
+        if not self.caching:  # restore query cache
+            self.cache = cache.copy()
 
     def connection_lost(self, exc):
         pass
@@ -216,6 +220,7 @@ def run():
     """
     import docopt
     import textwrap
+
     args = docopt.docopt(textwrap.dedent(run.__doc__), sys.argv[1:])
 
     if not sys.version_info > (3, 4, 0):
@@ -227,11 +232,19 @@ def run():
 
     caching = args['--caching']
     port = int(args['--port']) if args['--port'] else 53
-    round_robin = args['--round_robin']
     ttl = args['--ttl']
 
     listen = loop.create_datagram_endpoint(
-        DNSServerProtocol, local_addr=('127.0.0.1', port))
+        lambda: DNSServerProtocol(caching, ttl),
+        local_addr=('127.0.0.1', port))
+
+    if caching:
+        print("Loading cache from file")
+        try:
+            with open('cache', 'r') as f:
+                cache.update(json.load(f))
+        except:
+            print("loading cache failed")
 
     transport, async_protocol = loop.run_until_complete(listen)
 
@@ -242,6 +255,11 @@ def run():
 
     transport.close()
     loop.close()
+
+    if caching:
+        print("Writing cache to file")
+        with open('cache', 'w') as f:
+            json.dump(cache, f, indent=2)
 
 if __name__ == '__main__':
     run()
