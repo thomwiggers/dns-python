@@ -75,7 +75,7 @@ class DNSServerProtocol(object):
 
     def __init__(self, caching=False, ttl=None):
         self.caching = caching
-        self.ttl = None
+        self.ttl = ttl
         if not caching:
             self.cache = cache.copy()
         else:
@@ -256,7 +256,7 @@ def run():
 
     caching = args['--caching']
     port = int(args['--port']) if args['--port'] else 53
-    ttl = args['--ttl']
+    ttl = int(args['--ttl']) if args['--ttl'] else None
 
     listen = loop.create_datagram_endpoint(
         lambda: DNSServerProtocol(caching, ttl),
