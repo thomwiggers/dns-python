@@ -240,7 +240,6 @@ def run():
     options:
         -c, --caching
         -p, --port port
-        -r, --round_robin
         -t, --ttl time_to_live
     """
     import docopt
