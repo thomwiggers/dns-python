@@ -228,11 +228,8 @@ class ResourceRecord(object):
             record = CNAMERecord(blob, name=name, ttl=ttl, rdata=rdata)
         elif type_ == Type.NS:
             record = NSRecord(blob, name=name, ttl=ttl, rdata=rdata)
-        elif type_ == Type.OPT:
+        else: #not supported
             return (None, struct_[10+rdlength:])
-        else:
-            raise NotImplementedError(
-                "Got a resource type we don't understand")
 
         assert class_ == QUERY_CLASS_IN, "Only the internet class is supported"
 
