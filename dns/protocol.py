@@ -247,6 +247,7 @@ class ResourceRecord(object):
 
     @classmethod
     def from_dict(cls, name, data):
+        print('constructing')
         if data['type'] == 'A':
             return ARecord(name=name, ttl=data['ttl'],
                            address=data['address'])
@@ -255,6 +256,8 @@ class ResourceRecord(object):
                             nsdname=data['nsdname'])
         elif data['type'] == 'CNAME':
             return CNAMERecord(name=name, cname=data['cname'], ttl=data['ttl'])
+        else:
+            raise Exception("Don't know how to construct %r" % data)
 
 
 class ARecord(ResourceRecord):
@@ -309,14 +312,15 @@ class NSRecord(ResourceRecord):
             rdata = self.rdata
             if isinstance(rdata, bytearray):
                 rdata = rdata.decode('latin1').encode('latin1')
-            self._nsdname = _extract_string(rdata, self._struct)
+            self._nsdname, _ = _extract_string(rdata, self._struct)
+            return self._nsdname
         elif self._nsdname is not None:
             return self._nsdname
         else:
             return ValueError("No NSDName and no rdata?!")
 
     def to_dict(self):
-        return {'type': 'A', 'nsdname': self.nsdname, 'ttl': self.ttl}
+        return {'type': 'NS', 'nsdname': self.nsdname, 'ttl': self.ttl}
 
 
 class CNAMERecord(ResourceRecord):
@@ -349,4 +353,4 @@ class CNAMERecord(ResourceRecord):
         raise NotImplementedError("Not yet implemented")
 
     def to_dict(self):
-        return {'type': 'A', 'cname': self.cname, 'ttl': self.ttl}
+        return {'type': 'CNAME', 'cname': self.cname, 'ttl': self.ttl}

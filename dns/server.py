@@ -3,6 +3,7 @@
 from __future__ import print_function, absolute_import
 
 import asyncio
+from collections import defaultdict
 import random
 import sys
 
@@ -11,7 +12,9 @@ from client import resolve_question
 
 caching = False
 
-cache = {
+cache = defaultdict(list)
+
+cache.update({
     'a.root-servers.net': [
         {'type': 'A', 'address': '198.41.0.4', 'ttl': 3600000}],
     'b.root-servers.net': [
@@ -50,7 +53,7 @@ cache = {
           {'type': 'NS', 'nsdname': 'k.root-servers.net', 'ttl': 3600000},
           {'type': 'NS', 'nsdname': 'l.root-servers.net', 'ttl': 3600000},
           {'type': 'NS', 'nsdname': 'm.root-servers.net', 'ttl': 3600000}]
-}
+})
 
 
 def _get_ip_from_packet(packet, name):
@@ -97,46 +100,61 @@ class DNSServerProtocol(object):
         # elif: A record: done
         # else: NS record: vraag A record op voor NS
 
-        previous_server = None
-        server = self.resolve_name(protocol.Type.NS, '.').nsdname
+        last_ns_ip = None
+        server = self.resolve_name(protocol.Type.NS, '.', last_ns_ip).nsdname
+        print(server)
         for x in range(50):
-            result = self.resolve_name(question.qtype.name, question.qname,
-                                       server, previous_server)
-            if result.is_authorative:
-                return result.answers[0]
+            print('resolving ip for ns', server)
+            cached = self.lookup_cache(protocol.Type.A, server)
+            if cached:
+                last_ns_ip = cached.address
             else:
-                for x in result.authorities:
-                    if x.type_ == protocol.Type.NS:
-                        previous_server = server
-                        server = x.nsdname
+                print('trying to find name server ip', server)
+                q = protocol.Question(server, protocol.Type.A)
+                last_ns_ip = self.handle_question(q).address
+            print('found', last_ns_ip)
 
-        raise Exception("Too many queries")
+            result = self.resolve_name(question.qtype,
+                                       question.qname,
+                                       last_ns_ip)
+            if result.type_ == question.qtype:
+                print('returning result', result)
+                return result
+            elif result.type_ == protocol.Type.NS:
+                server = result.nsdname
 
-    def resolve_name(self, type_, name, server=None, previous_server=None):
+        raise Exception("Too many tries")
+
+    def resolve_name(self, type_, name, server):
         result = self.lookup_cache(type_, name)
-        if not result and server:
-            ns = self.resolve_name(protocol.Type.A, server, previous_server)
-            ns_ip = _get_ip_from_packet(ns)
-            result = resolve_question(type_, name, ns_ip)
-            self.cache_packet(result)
-            return self.lookup_cache(type_, name)
+        if result:
+            return result
+        else:
+            packet = resolve_question(type_, name, server)
+            self.cache_packet(packet)
+            for rr in (packet.answers
+                       + packet.authorities
+                       + packet.additional):
+                if rr.name == name:
+                    return rr
+                elif rr.type_ == protocol.Type.NS:
+                    return rr
 
-        return result
 
     def cache_packet(self, packet):
         """Stores a packet in the local cache"""
         for record in (packet.answers
                        + packet.authorities
                        + packet.additional):
-            self.cache[record.name] = record.to_dict()
+            self.cache[record.name] += [record.to_dict()]
 
     def lookup_cache(self, type_, name):
-        records = cache.get(name, [])
-        random.shuffle(records)
-        for record in records:
-            print(record)
+        random.shuffle(self.cache[name])
+        for record in self.cache[name]:
             if record['type'] == type_.name:
-                return protocol.ResourceRecord.from_dict(name, record)
+                print(record)
+                res = protocol.ResourceRecord.from_dict(name, record)
+                return res
 
 
 def run():
