@@ -198,7 +198,6 @@ class DNSServerProtocol(object):
 
     def cache_packet(self, packet):
         """Stores a packet in the local cache"""
-        return
         for record in (packet.answers
                        + packet.authorities
                        + packet.additional):
@@ -216,7 +215,7 @@ class DNSServerProtocol(object):
                 return res
 
     def update_cache(self):
-        for key, value in self.cache:
+        for key, value in self.cache.items():
             if key == '.' or key.endswith('.root-servers.net'):
                 continue
             for record in value:
@@ -227,7 +226,7 @@ class DNSServerProtocol(object):
                         datetime.now() - record['updated']).seconds
 
                 if record['ttl'] <= 0:
-                    print("Pruning %s: %s from cache", key, record.type)
+                    print("Pruning %s: %s from cache", key, record['type'])
                     value.remove(record)
 
 
@@ -283,6 +282,11 @@ def run():
     loop.close()
 
     if caching:
+        for key, value in cache.items():
+            for record in value:
+                if 'updated' in record:
+                    del record['updated']
+
         print("Writing cache to file")
         with open('cache', 'w') as f:
             json.dump(cache, f, indent=2)
