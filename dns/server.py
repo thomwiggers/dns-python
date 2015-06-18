@@ -85,7 +85,7 @@ class DNSServerProtocol(object):
         self.transport = transport
 
     def datagram_received(self, data, addr):
-        print('Received %s from %s' % (data, addr))
+        print('Received data from ', addr)
 
         packet = protocol.DNSPacket.from_struct(data)
         results = []
@@ -169,10 +169,10 @@ class DNSServerProtocol(object):
             if not result:
                 return []
             if result.type_ == question.qtype:
-                print('returning result', result)
+                print('returning result with type', result.type_)
                 return [result]
             elif result.type_ == protocol.Type.CNAME:
-                print('cname!')
+                print('cname received!')
                 q = protocol.Question(result.cname, question.qtype)
                 return [result] + self.handle_question(q)
             elif result.type_ == protocol.Type.NS:
@@ -210,7 +210,6 @@ class DNSServerProtocol(object):
         random.shuffle(self.cache[name])
         for record in self.cache[name]:
             if record['type'] == type_.name:
-                print(record)
                 res = protocol.ResourceRecord.from_dict(name, record)
                 return res
 
@@ -226,7 +225,7 @@ class DNSServerProtocol(object):
                         datetime.now() - record['updated']).seconds
 
                 if record['ttl'] <= 0:
-                    print("Pruning %s: %s from cache", key, record['type'])
+                    print("Pruning %s: %s from cache" % (key, record['type']))
                     value.remove(record)
 
 
