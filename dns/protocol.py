@@ -355,9 +355,10 @@ class CNAMERecord(ResourceRecord):
         return len(self.pack_rdata())
 
     def pack_rdata(self):
-        if self.rdata:
-            return self.rdata
-        return _pack_name(self._cname)
+        return _pack_name(self.cname)
 
     def to_dict(self):
         return {'type': 'CNAME', 'cname': self.cname, 'ttl': self.ttl}
+
+    def __repr__(self):
+        return '<CNAMERecord name="%s", cname="%s">' % (self.name, self.cname)

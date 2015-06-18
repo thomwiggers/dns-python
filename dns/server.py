@@ -112,7 +112,9 @@ class DNSServerProtocol(object):
         packet.answers = results
         packet.identifier = identifier
 
-        self.transport.sendto(packet.pack_struct(), addr)
+        struct_ = packet.pack_struct()
+
+        self.transport.sendto(struct_, addr)
 
     def handle_question(self, question):
         """ Ik weet het even niet meer"""
