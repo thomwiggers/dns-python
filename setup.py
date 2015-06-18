@@ -18,7 +18,7 @@ if sys.argv[-1] == 'publish':
 readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
-requirements = []
+requirements = ['docopt']
 
 if sys.version_info < (3, 0):
     requirements += [

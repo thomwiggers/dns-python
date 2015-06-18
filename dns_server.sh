@@ -17,6 +17,4 @@ source /tmp/virtualenv/bin/activate
 
 pip install -e .
 
-python3 ./setup.py test
-
-./tests/test_client.sh
+sudo dns-server $@
