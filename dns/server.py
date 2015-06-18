@@ -120,6 +120,10 @@ class DNSServerProtocol(object):
             if result.type_ == question.qtype:
                 print('returning result', result)
                 return result
+            elif result.type_ == protocol.Type.CNAME:
+                print('cname!')
+                q = protocol.Question(result.cname, question.qtype)
+                return self.handle_question(q)
             elif result.type_ == protocol.Type.NS:
                 server = result.nsdname
 
@@ -139,7 +143,6 @@ class DNSServerProtocol(object):
                     return rr
                 elif rr.type_ == protocol.Type.NS:
                     return rr
-
 
     def cache_packet(self, packet):
         """Stores a packet in the local cache"""
