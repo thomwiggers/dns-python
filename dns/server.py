@@ -4,6 +4,7 @@ from __future__ import print_function, absolute_import
 
 import asyncio
 from collections import defaultdict
+from datetime import datetime
 import random
 import sys
 import json
@@ -89,6 +90,9 @@ class DNSServerProtocol(object):
         packet = protocol.DNSPacket.from_struct(data)
         results = []
 
+        if self.caching:
+            self.update_cache()
+
         for question in packet.questions:
             results += self.handle_question(question)
 
@@ -96,6 +100,8 @@ class DNSServerProtocol(object):
 
         if not self.caching:  # restore query cache
             self.cache = cache.copy()
+        else:
+            self.update_cache()
 
     def connection_lost(self, exc):
         pass
@@ -153,7 +159,7 @@ class DNSServerProtocol(object):
                 print('trying to find name server ip', server)
                 q = protocol.Question(server, protocol.Type.A)
                 last_ns_ip = self.handle_question(q)[0].address
-            print('found', last_ns_ip)
+                print('found ', last_ns_ip, 'for', server)
 
             result = self.resolve_name(question.qtype,
                                        question.qname,
@@ -177,24 +183,27 @@ class DNSServerProtocol(object):
         if result:
             return result
         else:
-            print('sending question over the network')
+            print('sending question over the network', name)
             packet = resolve_question(type_, name, server, recursive=False)
             self.cache_packet(packet)
             for rr in (packet.answers
-                       + packet.authorities
-                       + packet.additional):
+                       + packet.additional
+                       + packet.authorities):
                 if rr.name == name:
                     return rr
-                elif rr.type_ == protocol.Type.NS:
+                if rr.type_ == protocol.Type.NS:
                     return rr
 
     def cache_packet(self, packet):
         """Stores a packet in the local cache"""
+        return
         for record in (packet.answers
                        + packet.authorities
                        + packet.additional):
-            print(record)
-            self.cache[record.name] += [record.to_dict()]
+            obj = record.to_dict()
+            if self.ttl:
+                obj['ttl'] = self.ttl
+            self.cache[record.name] += [obj]
 
     def lookup_cache(self, type_, name):
         random.shuffle(self.cache[name])
@@ -203,6 +212,21 @@ class DNSServerProtocol(object):
                 print(record)
                 res = protocol.ResourceRecord.from_dict(name, record)
                 return res
+
+    def update_cache(self):
+        for key, value in self.cache:
+            if key == '.' or key.endswith('.root-servers.net'):
+                continue
+            for record in value:
+                if 'updated' not in record:
+                    record['updated'] = datetime.now()
+                else:
+                    record['ttl'] -= (
+                        datetime.now() - record['updated']).seconds
+
+                if record['ttl'] <= 0:
+                    print("Pruning %s: %s from cache", key, record.type)
+                    value.remove(record)
 
 
 def run():

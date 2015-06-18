@@ -37,7 +37,7 @@ def _pack_name(name):
     b = bytearray()
     for part in name.strip('.').split('.'):
         b.append(len(part))
-        b += bytearray(part, 'ascii')
+        b += bytearray(part, 'latin1')
     b.append(0)
     return b
 
@@ -63,7 +63,7 @@ def _extract_string(data, blob):
             data = data[2:]
             return (string, data)
         else:
-            string += data[1:1+data[0]].decode('ascii') + '.'
+            string += data[1:1+data[0]].decode('latin1') + '.'
             data = data[1+data[0]:]
 
     return (string, data[1:] if data else b'')
