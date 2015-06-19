@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 case "$(python3 --version 2>&1)" in
     *" 3.4"*)
