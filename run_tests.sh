@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 case "$(python3 --version 2>&1)" in
     *" 3.4"*)
         echo "Correct python3 version, using python 3.4"
@@ -20,3 +22,4 @@ pip install -e .
 python3 ./setup.py test
 
 ./tests/test_client.sh
+./tests/test_server.sh

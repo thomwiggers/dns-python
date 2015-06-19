@@ -104,6 +104,8 @@ class DNSServerProtocol(object):
         else:
             self.update_cache()
 
+        sys.stdout.flush()
+
     def connection_lost(self, exc):
         pass
 
